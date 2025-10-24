@@ -276,6 +276,90 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 4000); // Alert akan hilang setelah 4 detik
     }
 });
+
+/**
+ * Menginisialisasi fungsionalitas drag-and-drop untuk sorting.
+ * @param {HTMLElement} element - Elemen tbody dari tabel.
+ */
+function initializeSortable(element) {
+    new Sortable(element, {
+        animation: 150, // Animasi saat item dipindahkan
+        ghostClass: 'sortable-ghost', // Class untuk item bayangan saat di-drag
+        onEnd: function (evt) {
+            // Dapatkan semua baris dari tbody
+            const rows = Array.from(element.children);
+            // Buat array berisi ID berdasarkan urutan baru
+            const orderedIds = rows.map(row => row.getAttribute('data-id'));
+
+            // Kirim urutan baru ke server menggunakan Fetch API
+            fetch('?action=updateOrder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest' // Header umum untuk request AJAX
+                },
+                body: JSON.stringify({ order: orderedIds })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Gagal menyimpan urutan:', data.message);
+                    // Opsional: Tampilkan notifikasi error kepada pengguna
+                }
+            })
+            .catch(error => {
+                console.error('Error saat mengirim data urutan:', error);
+            });
+        }
+    });
+}
+/**
+ * Menampilkan modal detail tugas.
+ * @param {string} title - Judul tugas.
+ * @param {string} description - Deskripsi tugas.
+ * @param {string} status - HTML badge untuk status.
+ * @param {string} createdAt - Tanggal pembuatan.
+ * @param {string} updatedAt - Tanggal pembaruan terakhir.
+ */
+function showModalDetailTodo(title, description, status, createdAt, updatedAt) {
+    document.getElementById('detailTitle').textContent = title;
+    document.getElementById('detailDescription').textContent = description;
+    document.getElementById('detailStatus').innerHTML = status;
+    document.getElementById('detailCreatedAt').textContent = createdAt;
+    document.getElementById('detailUpdatedAt').textContent = updatedAt;
+    const detailModal = new bootstrap.Modal(document.getElementById('detailTodo'));
+    detailModal.show();
+}
+
+/**
+ * Menampilkan modal untuk mengubah tugas.
+ * @param {number} id - ID tugas.
+ * @param {string} title - Judul tugas.
+ * @param {string} description - Deskripsi tugas.
+ * @param {string} isFinished - Status selesai ('1' atau '0').
+ */
+function showModalEditTodo(id, title, description, isFinished) {
+    document.getElementById('inputEditTodoId').value = id;
+    document.getElementById('inputEditTitle').value = title;
+    document.getElementById('inputEditDescription').value = description;
+    document.getElementById('selectEditStatus').value = isFinished;
+    const editModal = new bootstrap.Modal(document.getElementById('editTodo'));
+    editModal.show();
+}
+
+/**
+ * Menampilkan modal konfirmasi penghapusan tugas.
+ * @param {number} id - ID tugas.
+ * @param {string} title - Judul tugas.
+ * @param {string} filter - Filter saat ini.
+ * @param {string} search - Kueri pencarian saat ini.
+ */
+function showModalDeleteTodo(id, title, filter, search) {
+    document.getElementById('deleteTodoActivity').textContent = title;
+    document.getElementById('btnDeleteTodo').href = `?action=delete&id=${id}&filter=${filter}&search=${search}`;
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteTodo'));
+    deleteModal.show();
+}
 </script>
 </body>
 </html>
