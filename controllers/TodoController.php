@@ -1,159 +1,170 @@
-
 <?php
-require_once (__DIR__ . '/../models/TodoModel.php');
 
+declare(strict_types=1);
+
+require_once __DIR__ . '/../models/TodoModel.php';
+
+/**
+ * Class TodoController
+ * Handles all user actions related to Todos.
+ */
 class TodoController
 {
-    /** @var TodoModel $todoModel */
-    private $todoModel;
-
     /**
-     * Constructor untuk menginisialisasi model.
-     */
-    public function __construct()
-    {
-        $this->todoModel = new TodoModel();
-    }
-
-    /**
-     * Menampilkan halaman utama dengan daftar todo.
-     * Mengelola filter dan pencarian.
+     * Displays the main page with a list of todos.
+     * Handles filtering and searching.
+     *
+     * @return void
      */
     public function index()
     {
-        $filter = $_GET['filter'] ?? 'all'; // Default filter adalah 'all'
-        $search = $_GET['search'] ?? '';   // Ambil keyword pencarian
+        $filter = $_GET['filter'] ?? 'all';
+        $search = $_GET['search'] ?? '';
 
-        $todos = $this->todoModel->getAllTodos($filter, $search);
-        include (__DIR__ . '/../views/TodoView.php');
+        $todoModel = new TodoModel();
+        $todos = $todoModel->getAllTodos($filter, $search);
+
+        include __DIR__ . '/../views/TodoView.php';
     }
 
     /**
-     * Membuat todo baru berdasarkan data dari form POST.
+     * Handles the creation of a new todo.
+     * Validates input and sets a flash message.
+     *
+     * @return void
      */
     public function create()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $title = trim($_POST['activity']); // Di form masih menggunakan nama 'activity'
-            $description = trim($_POST['description']);
- 
-            $validationErrors = $this->validateTodo($title);
-            if (empty($validationErrors)) {
-                if ($this->todoModel->createTodo($title, $description)) {
-                    $this->setFlashMessage('success', 'Berhasil menambahkan todo baru.');
-                } else {
-                    $this->setFlashMessage('danger', 'Gagal menambahkan todo baru.');
-                }
+            $title = trim($_POST['title']);
+            $description = $_POST['description'] ?? null;
+
+            $todoModel = new TodoModel();
+
+            if (empty($title)) {
+                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Gagal! Judul tidak boleh kosong.'];
+            } elseif ($todoModel->checkTitleExists($title)) {
+                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Gagal! Judul todo sudah ada.'];
+            } elseif ($todoModel->createTodo($title, $description)) {
+                $_SESSION['flash_message'] = ['type' => 'success', 'message' => 'Todo berhasil ditambahkan.'];
+            } else {
+                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Gagal menambahkan todo ke database.'];
             }
         }
-        $this->redirect('index.php');
+
+        header('Location: ' . $this->buildRedirectUrl());
+        exit();
     }
 
     /**
-     * Memperbarui todo yang ada berdasarkan data dari form POST.
+     * Handles the update of an existing todo.
+     * Validates input and sets a flash message.
+     *
+     * @return void
      */
     public function update()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $_POST['id'];
-            $title = trim($_POST['activity']); // Di form masih menggunakan nama 'activity'
-            $description = trim($_POST['description']);
-            $status = isset($_POST['status']) ? (bool)$_POST['status'] : false;
- 
-            $validationErrors = $this->validateTodo($title, $id);
-            if (empty($validationErrors)) {
-                if ($this->todoModel->updateTodo($id, $title, $description, $status)) {
-                    $this->setFlashMessage('success', 'Todo berhasil diperbarui.');
-                } else {
-                    $this->setFlashMessage('danger', 'Gagal memperbarui todo.');
-                }
-            }
-        }
-        $this->redirect('index.php');
-    }
+            $title = trim($_POST['title']);
+            $description = $_POST['description'] ?? null;
+            $is_finished = $_POST['is_finished'] ?? '0';
 
-    /**
-     * Menghapus todo berdasarkan ID dari query string.
-     * Catatan Keamanan: Operasi destruktif (seperti delete) sebaiknya menggunakan metode POST
-     * untuk mencegah penghapusan tidak sengaja oleh crawler atau pre-fetching browser.
-     * Perubahan ini memerlukan modifikasi pada view (menggunakan form atau JavaScript).
-     */
-    public function delete()
-    {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
-            $id = $_POST['id'];
-            if ($this->todoModel->deleteTodo($id)) {
-                $this->setFlashMessage('success', 'Todo berhasil dihapus.');
+            $todoModel = new TodoModel();
+
+            if (empty($title)) {
+                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Gagal! Judul tidak boleh kosong.'];
+            } elseif ($todoModel->checkTitleExists($title, $id)) {
+                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Gagal! Judul todo sudah ada.'];
+            } elseif ($todoModel->updateTodo((int)$id, $title, $description, $is_finished)) {
+                $_SESSION['flash_message'] = ['type' => 'success', 'message' => 'Todo berhasil diperbarui.'];
             } else {
-                $this->setFlashMessage('danger', 'Gagal menghapus todo.');
+                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Gagal memperbarui todo.'];
             }
         }
-        $this->redirect('index.php');
-    }
 
-    /**
-     * Memperbarui urutan todo (drag-and-drop).
-     */
-    public function updateOrder()
-    {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $input = json_decode(file_get_contents('php://input'), true);
-            $orderedIds = $input['order'];
-
-            header('Content-Type: application/json');
-            if ($this->todoModel->updateOrder($orderedIds)) {
-                echo json_encode(['status' => 'success', 'message' => 'Urutan berhasil diperbarui.']);
-            } else {
-                http_response_code(500);
-                echo json_encode(['status' => 'error', 'message' => 'Gagal memperbarui urutan.']);
-            }
-            exit();
-        }
-    }
-
-    /**
-     * Helper function untuk redirect.
-     * @param string $url
-     */
-    private function redirect(string $url): void
-    {
-        header('Location: ' . $url);
+        header('Location: ' . $this->buildRedirectUrl());
         exit();
     }
 
     /**
-     * Mengatur flash message di session.
-     * @param string $type Tipe pesan (e.g., 'success', 'danger').
-     * @param string $message Isi pesan.
+     * Handles the AJAX request to update the sort order of todos.
+     *
+     * @return void
      */
-    private function setFlashMessage(string $type, string $message): void
+    public function updateOrder()
     {
-        $_SESSION['flash_message'] = ['type' => $type, 'message' => $message];
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->sendJsonResponse(['status' => 'error', 'message' => 'Invalid request method.'], 405);
+            return;
+        }
+
+        $data = json_decode(file_get_contents('php://input'), true);
+        $orderedIds = $data['order'] ?? [];
+
+        if (empty($orderedIds)) {
+            $this->sendJsonResponse(['status' => 'error', 'message' => 'No order data provided.'], 400);
+            return;
+        }
+
+        $todoModel = new TodoModel();
+        if ($todoModel->updateOrder($orderedIds)) {
+            $this->sendJsonResponse(['status' => 'success', 'message' => 'Order updated successfully.']);
+        } else {
+            $this->sendJsonResponse(['status' => 'error', 'message' => 'Failed to update order.'], 500);
+        }
     }
 
     /**
-     * Memvalidasi data todo (judul).
-     * @param string $title Judul todo.
-     * @param int|null $currentId ID todo saat ini (untuk operasi update).
-     * @return array Daftar pesan error. Kosong jika valid.
+     * Handles the deletion of a todo.
+     *
+     * @return void
      */
-    private function validateTodo(string $title, ?int $currentId = null): array
+    public function delete()
     {
-        $errors = [];
-        if (empty($title)) {
-            $errors[] = 'Judul todo tidak boleh kosong.';
+        if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
+            $id = $_GET['id'];
+            $todoModel = new TodoModel();
+            if ($todoModel->deleteTodo((int)$id)) {
+                $_SESSION['flash_message'] = ['type' => 'success', 'message' => 'Todo berhasil dihapus.'];
+            } else {
+                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Gagal menghapus todo.'];
+            }
         }
 
-        $existingTodo = $this->todoModel->getTodoByTitle($title);
-        if ($existingTodo && $existingTodo['id'] != $currentId) {
-            $errors[] = 'Todo dengan judul "' . htmlspecialchars($title) . '" sudah ada.';
-        }
+        header('Location: ' . $this->buildRedirectUrl());
+        exit();
+    }
 
-        // Jika ada error, langsung set flash message
-        if (!empty($errors)) {
-            $this->setFlashMessage('danger', 'Gagal! ' . implode(' ', $errors));
-        }
+    /**
+     * Builds a redirect URL with persistent filter and search parameters.
+     *
+     * @return string The constructed URL.
+     */
+    private function buildRedirectUrl()
+    {
+        $params = [
+            'filter' => $_POST['filter'] ?? $_GET['filter'] ?? 'all',
+            'search' => $_POST['search'] ?? $_GET['search'] ?? ''
+        ];
 
-        return $errors;
+        $params = array_filter($params, function ($value) {
+            return $value !== '' && $value !== null;
+        });
+
+        return basename($_SERVER['PHP_SELF']) . '?' . http_build_query($params);
+    }
+
+    /**
+     * Sends a JSON response.
+     *
+     * @param array $data The data to encode.
+     * @param int $statusCode The HTTP status code.
+     * @return void
+     */
+    private function sendJsonResponse(array $data, int $statusCode = 200)
+    {
+        header('Content-Type: application/json', true, $statusCode);
+        echo json_encode($data);
     }
 }

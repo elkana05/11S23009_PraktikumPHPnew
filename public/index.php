@@ -1,13 +1,11 @@
 <?php
-if (isset($_GET['page'])) {
-    $page = $_GET['page'];
-} else {
-    $page = 'index';
-}
-include ('../controllers/TodoController.php');
+session_start();
+require_once('../controllers/TodoController.php');
 
 $todoController = new TodoController();
-switch ($page) {
+$action = $_GET['action'] ?? 'index';
+
+switch ($action) {
     case 'index':
         $todoController->index();
         break;
@@ -22,5 +20,8 @@ switch ($page) {
         break;
     case 'updateOrder':
         $todoController->updateOrder();
+        break;
+    default:
+        $todoController->index();
         break;
 }
