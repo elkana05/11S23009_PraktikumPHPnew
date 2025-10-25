@@ -81,7 +81,7 @@ class TodoModel
         $params = [$title];
 
         if ($excludeId !== null) {
-            $query .= ' AND id != $2';
+            $query .= ' AND id <> $2';
             $params[] = $excludeId;
         }
 

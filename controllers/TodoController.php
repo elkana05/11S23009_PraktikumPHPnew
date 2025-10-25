@@ -65,7 +65,7 @@ class TodoController
     public function update()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = $_POST['id'];
+            $id = (int)$_POST['id'];
             $title = trim($_POST['title']);
             $description = $_POST['description'] ?? null;
             $is_finished = $_POST['is_finished'] ?? '0';
@@ -75,7 +75,7 @@ class TodoController
             if (empty($title)) {
                 $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Gagal! Judul tidak boleh kosong.'];
             } elseif ($todoModel->checkTitleExists($title, $id)) {
-                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Gagal! Judul todo sudah ada.'];
+                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Gagal! Judul todo yang sama sudah ada.'];
             } elseif ($todoModel->updateTodo((int)$id, $title, $description, $is_finished)) {
                 $_SESSION['flash_message'] = ['type' => 'success', 'message' => 'Todo berhasil diperbarui.'];
             } else {
