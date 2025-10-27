@@ -30,7 +30,7 @@
 
     <div class="controls-wrapper">
         <div class="row g-3">
-            <div class="col-lg-8">
+            <div class="col-lg-7">
                 <form action="" method="GET" class="search-box">
                     <input type="hidden" name="filter" value="<?= htmlspecialchars($_GET['filter'] ?? 'all') ?>">
                     <div class="input-group">
@@ -41,7 +41,7 @@
                     </div>
                 </form>
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-5">
                 <div class="filter-buttons">
                     <a href="?filter=all&search=<?= urlencode($_GET['search'] ?? '') ?>"
                        class="filter-btn <?= (!isset($_GET['filter']) || $_GET['filter'] == 'all') ? 'active' : '' ?>">
