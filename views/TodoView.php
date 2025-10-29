@@ -258,7 +258,6 @@
 
 <script src="/assets/vendor/bootstrap-5.3.8-dist/js/bootstrap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-<script src="/assets/js/main.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // Inisialisasi fungsionalitas aplikasi
